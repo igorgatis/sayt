@@ -7,11 +7,6 @@ on:
         description: 'Release version (e.g., 1.0.0)'
         required: true
         type: string
-      latest:
-        description: 'Mark as latest release'
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   release:
@@ -22,12 +17,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Validate version format
         run: |
           if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "Error: Version must follow semantic versioning (e.g., 1.0.0)"
             exit 1
+          fi
+
+      - name: Determine if latest
+        id: check_latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT_HIGHEST=$(gh release list --json tagName -q '.[].tagName' | sort -V | tail -n1)
+          if [ -z "$CURRENT_HIGHEST" ]; then
+            echo "is_latest=true" >> $GITHUB_OUTPUT
+            echo "No existing releases, marking as latest"
+          else
+            HIGHEST=$(printf '%s\n%s' "$CURRENT_HIGHEST" "${{ inputs.version }}" | sort -V | tail -n1)
+            if [ "$HIGHEST" = "${{ inputs.version }}" ]; then
+              echo "is_latest=true" >> $GITHUB_OUTPUT
+              echo "${{ inputs.version }} >= $CURRENT_HIGHEST, marking as latest"
+            else
+              echo "is_latest=false" >> $GITHUB_OUTPUT
+              echo "${{ inputs.version }} < $CURRENT_HIGHEST, not marking as latest"
+            fi
           fi
 
       - name: Create tarball
@@ -42,10 +59,10 @@ jobs:
           name: ${{ inputs.version }}
           files: sayt-${{ inputs.version }}.tar.gz
           generate_release_notes: true
-          make_latest: ${{ inputs.latest }}
+          make_latest: ${{ steps.check_latest.outputs.is_latest }}
 
       - name: Update latest tag
-        if: ${{ inputs.latest }}
+        if: steps.check_latest.outputs.is_latest == 'true'
         run: |
           git tag -f latest
           git push -f origin latest
