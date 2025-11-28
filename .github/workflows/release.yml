@@ -17,8 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Validate version format
         run: |
@@ -61,8 +59,11 @@ jobs:
           generate_release_notes: true
           make_latest: ${{ steps.check_latest.outputs.is_latest }}
 
-      - name: Update latest tag
+      - name: Update latest release
         if: steps.check_latest.outputs.is_latest == 'true'
-        run: |
-          git tag -f latest
-          git push -f origin latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: latest
+          body: "Latest release: ${{ inputs.version }}"
+          files: sayt-${{ inputs.version }}.tar.gz
