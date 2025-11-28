@@ -7,6 +7,11 @@ on:
         description: 'Release version (e.g., 1.0.0)'
         required: true
         type: string
+      latest:
+        description: 'Mark as latest release'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   release:
@@ -33,7 +38,14 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version }}
-          name: v${{ inputs.version }}
+          tag_name: ${{ inputs.version }}
+          name: ${{ inputs.version }}
           files: sayt-${{ inputs.version }}.tar.gz
           generate_release_notes: true
+          make_latest: ${{ inputs.latest }}
+
+      - name: Update latest tag
+        if: ${{ inputs.latest }}
+        run: |
+          git tag -f latest
+          git push -f origin latest
