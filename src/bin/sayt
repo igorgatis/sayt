@@ -1,7 +1,133 @@
 #!/usr/bin/env bash
+# TODO: convert this to Cosmos APE
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SAYT_DIR="$(dirname "$SCRIPT_DIR")"
+MISE_VERSION="v2025.11.11"
+NUSHELL_VERSION="0.107.0"
 
-echo exec nu "$SAYT_DIR/sayt.nu" "$@"
+get_cache_dir() {
+  case "$(uname -s)" in
+    Linux*)
+      echo "${XDG_CACHE_HOME:-$HOME/.cache}/sayt"
+      ;;
+    Darwin*)
+      echo "$HOME/Library/Caches/sayt"
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      echo "${LOCALAPPDATA:-$HOME/AppData/Local}/sayt"
+      ;;
+    *)
+      echo "$HOME/.cache/sayt"
+      ;;
+  esac
+}
+
+get_os() {
+  case "$(uname -s)" in
+    Linux*)  echo "linux" ;;
+    Darwin*) echo "macos" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "win" ;;
+    *)       echo "linux" ;;
+  esac
+}
+
+get_arch() {
+  case "$(uname -m)" in
+    x86_64|amd64) echo "x64" ;;
+    aarch64|arm64) echo "arm64" ;;
+    armv7l) echo "armv7" ;;
+    *)      echo "x64" ;;
+  esac
+}
+
+find_sayt_yaml() {
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/sayt.yaml" ]]; then
+      echo "$dir/sayt.yaml"
+      return 0
+    fi
+    dir="$(dirname "$dir")"
+  done
+  return 1
+}
+
+get_sayt_version() {
+  local yaml_file
+  if yaml_file=$(find_sayt_yaml); then
+    local version
+    version=$(grep -E '^sayt_version\s*:\s*' "$yaml_file" 2>/dev/null | head -1 | sed 's/.*:\s*//' | tr -d '"' | tr -d "'" | xargs)
+    if [[ -n "$version" ]]; then
+      echo "$version"
+      return 0
+    fi
+  fi
+  echo "latest"
+}
+
+ensure_mise() {
+  local cache_dir="$1"
+  local mise_dir="$cache_dir/mise-${MISE_VERSION}"
+  local mise_bin="$mise_dir/mise"
+
+  if [[ -x "$mise_bin" ]]; then
+    echo "$mise_bin"
+    return 0
+  fi
+
+  local os=$(get_os)
+  local arch=$(get_arch)
+  local ext="tar.gz"
+  [[ "$os" == "win" ]] && ext="zip"
+
+  local filename="mise-${MISE_VERSION}-${os}-${arch}.${ext}"
+  local url="https://github.com/jdx/mise/releases/download/${MISE_VERSION}/${filename}"
+
+  mkdir -p "$mise_dir"
+  local tmp_file="$mise_dir/$filename"
+
+  echo "Downloading mise ${MISE_VERSION}..." >&2
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$url" -o "$tmp_file"
+  elif command -v wget &>/dev/null; then
+    wget -q "$url" -O "$tmp_file"
+  else
+    echo "Error: curl or wget required" >&2
+    exit 1
+  fi
+
+  echo "Extracting mise..." >&2
+  if [[ "$ext" == "zip" ]]; then
+    unzip -q "$tmp_file" -d "$mise_dir"
+  else
+    tar -xzf "$tmp_file" -C "$mise_dir"
+  fi
+  rm -f "$tmp_file"
+
+  if [[ ! -x "$mise_bin" ]]; then
+    local found_mise
+    found_mise=$(find "$mise_dir" -name "mise" -type f -perm -u+x 2>/dev/null | head -1)
+    if [[ -n "$found_mise" && "$found_mise" != "$mise_bin" ]]; then
+      mv "$found_mise" "$mise_bin"
+    fi
+  fi
+
+  chmod +x "$mise_bin"
+  echo "$mise_bin"
+}
+
+main() {
+  local cache_dir=$(get_cache_dir)
+  local mise_bin=$(ensure_mise "$cache_dir")
+  local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local sayt_dir="$(dirname "$script_dir")"
+
+  if [[ -f "$sayt_dir/sayt.nu" ]]; then
+    exec "$mise_bin" x "github:nushell/nushell@${NUSHELL_VERSION}" -- nu "$sayt_dir/sayt.nu" "$@"
+  else
+    local sayt_version=$(get_sayt_version)
+    exec "$mise_bin" exec "github:igorgatis/sayt@${sayt_version}" -- sayt "$@"
+  fi
+}
+
+main "$@"
