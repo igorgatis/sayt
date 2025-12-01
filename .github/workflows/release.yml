@@ -45,6 +45,9 @@ jobs:
             fi
           fi
 
+      - name: Generate .version file
+        run: echo -n "${{ inputs.version }}" > src/.version
+
       - name: Create tarball
         run: |
           cd src
