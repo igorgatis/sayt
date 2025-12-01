@@ -9,7 +9,9 @@ def --wrapped main [
 	subcommand?: string, ...args] {
 	cd $directory
 
-	let current_version = $env.FILE_PWD | path join ".version" | open | str trim
+	let current_version = try {
+		$env.FILE_PWD | path join ".version" | open | str trim
+	} catch { "latest" }
 	let config_version = try {
 		load-config | get say.version? | default $current_version
 	} catch {
