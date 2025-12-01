@@ -30,7 +30,7 @@ jobs:
           fi
           CURRENT=$(gh release list --json tagName -q '.[].tagName' | sort -V | tail -n1)
           HIGHEST=$(printf '%s\n%s' "$CURRENT" "$VERSION" | sort -V | tail -n1)
-          echo "is_latest=$([[ -z "$CURRENT" || "$HIGHEST" = "$VERSION" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "is_latest=$([[ "$HIGHEST" = "$VERSION" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
           echo -n "$VERSION" > src/.version
           tar -czvf sayt-$VERSION.tar.gz -C src .
 
