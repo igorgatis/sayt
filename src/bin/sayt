@@ -68,7 +68,7 @@ get_sayt_version() {
 ensure_mise() {
   local cache_dir="$1"
   local mise_dir="$cache_dir/mise-${MISE_VERSION}"
-  local mise_bin="$mise_dir/mise"
+  local mise_bin="$mise_dir/mise/bin/mise"
 
   if [[ -x "$mise_bin" ]]; then
     echo "$mise_bin"
