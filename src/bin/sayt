@@ -52,19 +52,6 @@ find_sayt_yaml() {
   return 1
 }
 
-get_sayt_version() {
-  local yaml_file
-  if yaml_file=$(find_sayt_yaml); then
-    local version
-    version=$(grep -E '^sayt_version\s*:\s*' "$yaml_file" 2>/dev/null | head -1 | sed 's/.*:\s*//' | tr -d '"' | tr -d "'" | xargs)
-    if [[ -n "$version" ]]; then
-      echo "$version"
-      return 0
-    fi
-  fi
-  echo "latest"
-}
-
 ensure_mise() {
   local cache_dir="$1"
   local mise_dir="$cache_dir/mise-${MISE_VERSION}"
@@ -125,8 +112,8 @@ main() {
   if [[ -f "$sayt_dir/sayt.nu" ]]; then
     exec "$mise_bin" x "github:nushell/nushell@${NUSHELL_VERSION}" -- nu "$sayt_dir/sayt.nu" "$@"
   else
-    local sayt_version=$(get_sayt_version)
-    exec "$mise_bin" exec "github:igorgatis/sayt@${sayt_version}" -- sayt "$@"
+    local v="$(cat "$sayt_dir/.version" 2>/dev/null | tr -d '[:space:]')"
+    exec "$mise_bin" exec "github:igorgatis/sayt@${v:-latest}" -- sayt "$@"
   fi
 }
 

@@ -8,6 +8,19 @@ def --wrapped main [
    --directory (-d) = ".",  # directory where to run the command
 	subcommand?: string, ...args] {
 	cd $directory
+
+	let current_version = $env.FILE_PWD | path join ".version" | open | str trim
+	let config_version = try {
+		load-config | get say.version? | default $current_version
+	} catch {
+		$current_version
+	}
+
+	if $config_version != $current_version {
+		vrun mise exec $"github:igorgatis/sayt@($config_version)" -- sayt $subcommand ...$args
+		return
+	}
+
   let subcommands = (scope commands | where name =~ "^main " | get name | each { |cmd| $cmd | str replace "main " "" })
 	if $help or not ($subcommand in $subcommands) {
 		help main
