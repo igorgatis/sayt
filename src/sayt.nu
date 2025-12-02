@@ -1,4 +1,3 @@
-#!/usr/bin/env nu
 use std log
 use std repeat
 use dind.nu
@@ -19,7 +18,7 @@ def --wrapped main [
 	}
 
 	if $config_version != $current_version {
-		vrun mise exec $"github:igorgatis/sayt@($config_version)" -- sayt $subcommand ...$args
+		vrun mise x $"github:igorgatis/sayt@($config_version)" -- sayt $subcommand ...$args
 		return
 	}
 
