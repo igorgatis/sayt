@@ -1,6 +1,13 @@
+@extern(embed)
+
 package say
 
-import "list"
+import (
+	"list"
+	"strings"
+)
+
+_versionFile: *"0.0.0" | _ @embed(file=.version,type=text)
 
 // #MapAsList implements the "Ordered Map" pattern to solve common configuration
 // composition challenges with standard YAML lists.
@@ -46,7 +53,12 @@ import "list"
 	outputs?: [...string] // list of files or directories the 'do' command is expected to produce.
 }
 
+// #SemVer defines a string that conforms to the Semantic Versioning 2.0.0 format.
+#SemVer: =~"^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-(0|[1-9]\\d*|\\d*[a-zA-Z-][a-zA-Z0-9-]*)(\\.(0|[1-9]\\d*|\\d*[a-zA-Z-][a-zA-Z0-9-]*))*)?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
+
 say: {
+	version: *strings.TrimSpace(_versionFile) | #SemVer
+
 	generate: {
 		#rule: {
 			data?: _
