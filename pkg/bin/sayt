@@ -3,7 +3,6 @@
 set -euo pipefail
 
 MISE_VERSION="v2025.11.11"
-NUSHELL_VERSION="0.107.0"
 
 get_cache_dir() {
   case "$(uname -s)" in
@@ -110,7 +109,7 @@ main() {
   local sayt_dir="$(dirname "$script_dir")"
 
   if [[ -f "$sayt_dir/sayt.nu" ]]; then
-    exec "$mise_bin" x "github:nushell/nushell@${NUSHELL_VERSION}" -- nu "$sayt_dir/sayt.nu" "$@"
+    exec "$mise_bin" tool-stub "$sayt_dir/nu.toml" "$sayt_dir/sayt.nu" "$@"
   else
     local v="$(cat "$sayt_dir/.version" 2>/dev/null | tr -d '[:space:]')"
     exec "$mise_bin" exec "github:igorgatis/sayt@${v:-latest}" -- sayt "$@"

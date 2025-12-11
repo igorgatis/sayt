@@ -1,5 +1,4 @@
 #!/usr/bin/env -S mise tool-stub
-
 bin = "docker"
 
 [platforms.darwin-arm64]

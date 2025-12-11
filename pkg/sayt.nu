@@ -1,7 +1,7 @@
 use std log
 use std repeat
 use dind.nu
-use tools.nu [vrun _cue _uvx _docker _docker_compose]
+use tools.nu [_cue _docker _docker_compose _nu _uvx vrun]
 
 def --wrapped main [
    --help (-h),  # show this help message
@@ -27,7 +27,7 @@ def --wrapped main [
 	if $help or not ($subcommand in $subcommands) {
 		help main
 	} else {
-		vrun nu $"($env.FILE_PWD)/sayt.nu" $subcommand ...$args
+		_nu $"($env.FILE_PWD)/sayt.nu" $subcommand ...$args
 	}
 }
 
@@ -96,7 +96,7 @@ def generate [--config=".say.{cue,yaml,yml,json,toml,nu}", --force (-f), ...file
 			let do = $"do { ($cmd.do) } ($cmd.args? | default "")"
 			let withenv = $"with-env { SAY_GENERATE_ARGS_FORCE: ($force) }"
 			let use = if ($cmd.use? | is-empty) { "" } else { $"use ($cmd.use);" }
-			vrun nu -I ($env.FILE_PWD | path relpath $env.PWD) -c $"($use)($withenv) { ($do) }"
+			_nu -I ($env.FILE_PWD | path relpath $env.PWD) -c $"($use)($withenv) { ($do) }"
 		}
 	}
 
@@ -113,7 +113,7 @@ def lint [--config=".say.{cue,yaml,yml,json,toml,nu}", ...args] {
 		$rule.cmds? | each { |cmd|
 			let do = $"do { ($cmd.do) } ($cmd.args? | default "")"
 			let use = if ($cmd.use? | is-empty) { "" } else { $"use ($cmd.use);" }
-			vrun nu -I ($env.FILE_PWD | path relpath $env.PWD) -c $"($use) ($do)"
+			_nu -I ($env.FILE_PWD | path relpath $env.PWD) -c $"($use) ($do)"
 		}
 	}
 	return
@@ -128,7 +128,7 @@ def setup [...args] {
 	}
 	# --- Recursive call section (remains the same) ---
 	if ('.sayt.nu' | path exists) {
-		vrun nu '.sayt.nu' setup ...$args
+		_nu '.sayt.nu' setup ...$args
 	}
 }
 
