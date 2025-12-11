@@ -1,4 +1,5 @@
 #!/usr/bin/env -S mise tool-stub
+
 bin = "docker"
 
 [platforms.darwin-arm64]
@@ -20,3 +21,8 @@ size = 75773499 # 72.26 MiB
 url = "https://download.docker.com/linux/static/stable/aarch64/docker-27.4.0.tgz"
 checksum = "blake3:06b1ae9036dd02470939e6b3e8831d7bd00059460ece8bbe0158ae3c4b3f9a3b"
 size = 69933940 # 66.69 MiB
+
+[platforms.windows-amd64]
+url = "https://download.docker.com/win/static/stable/x86_64/docker-27.4.0.zip"
+checksum = "blake3:1d556de232ea9828a060ab6400b684ca7da552685971820398d376c00765b66e"
+size = 39916391 # 38.07 MiB
