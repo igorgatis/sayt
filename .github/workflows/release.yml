@@ -32,7 +32,7 @@ jobs:
           HIGHEST=$(printf '%s\n%s' "$CURRENT" "$VERSION" | sort -V | tail -n1)
           echo "is_latest=$([[ "$HIGHEST" = "$VERSION" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
           echo -n "$VERSION" > pkg/.version
-          tar -czvf sayt-$VERSION.tar.gz -C pkg .
+          cd pkg && tar -czvf ../sayt-$VERSION.tar.gz .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -101,7 +101,7 @@ main() {
     exec "$mise_bin" tool-stub "$sayt_dir/nu.toml" "$sayt_dir/sayt.nu" "$@"
   else
     local v=${SAYT_VERSION:-latest}
-    echo "Bootstrapping sayt $v"
+    echo "Bootstrapping sayt@$v"
     exec "$mise_bin" exec "github:igorgatis/sayt@$v" -- sayt "$@"
   fi
 }
