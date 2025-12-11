@@ -100,7 +100,9 @@ main() {
   if [[ -f "$sayt_dir/sayt.nu" ]]; then
     exec "$mise_bin" tool-stub "$sayt_dir/nu.toml" "$sayt_dir/sayt.nu" "$@"
   else
-    exec "$mise_bin" exec "github:igorgatis/sayt@latest" -- sayt "$@"
+    local v=${SAYT_VERSION:-latest}
+    echo "Bootstrapping sayt $v"
+    exec "$mise_bin" exec "github:igorgatis/sayt@$v" -- sayt "$@"
   fi
 }
 
