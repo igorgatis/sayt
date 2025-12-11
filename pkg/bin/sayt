@@ -39,18 +39,6 @@ get_arch() {
   esac
 }
 
-find_sayt_yaml() {
-  local dir="$PWD"
-  while [[ "$dir" != "/" ]]; do
-    if [[ -f "$dir/sayt.yaml" ]]; then
-      echo "$dir/sayt.yaml"
-      return 0
-    fi
-    dir="$(dirname "$dir")"
-  done
-  return 1
-}
-
 ensure_mise() {
   local cache_dir="$1"
   local mise_dir="$cache_dir/mise-${MISE_VERSION}"
@@ -108,11 +96,11 @@ main() {
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local sayt_dir="$(dirname "$script_dir")"
 
+  # If sayt.nu is present, it means this file is already the desired version.
   if [[ -f "$sayt_dir/sayt.nu" ]]; then
     exec "$mise_bin" tool-stub "$sayt_dir/nu.toml" "$sayt_dir/sayt.nu" "$@"
   else
-    local v="$(cat "$sayt_dir/.version" 2>/dev/null | tr -d '[:space:]')"
-    exec "$mise_bin" exec "github:igorgatis/sayt@${v:-latest}" -- sayt "$@"
+    exec "$mise_bin" exec "github:igorgatis/sayt@latest" -- sayt "$@"
   fi
 }
 
