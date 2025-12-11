@@ -1,13 +1,8 @@
-@extern(embed)
-
 package say
 
 import (
 	"list"
-	"strings"
 )
-
-_versionFile: *"0.0.0" | _ @embed(file=.version,type=text)
 
 // #MapAsList implements the "Ordered Map" pattern to solve common configuration
 // composition challenges with standard YAML lists.
@@ -57,7 +52,7 @@ _versionFile: *"0.0.0" | _ @embed(file=.version,type=text)
 #SemVer: =~"^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-(0|[1-9]\\d*|\\d*[a-zA-Z-][a-zA-Z0-9-]*)(\\.(0|[1-9]\\d*|\\d*[a-zA-Z-][a-zA-Z0-9-]*))*)?(\\+[0-9a-zA-Z-]+(\\.[0-9a-zA-Z-]+)*)?$"
 
 say: {
-	version: *strings.TrimSpace(_versionFile) | #SemVer
+	version?: #SemVer
 
 	generate: {
 		#rule: {
