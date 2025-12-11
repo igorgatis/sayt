@@ -39,6 +39,10 @@ def --wrapped vtr [...args: string] {
   }
 }
 
+def --wrapped "main version" [...args] {
+	$env.FILE_PWD | path join ".version" | open | str trim
+}
+
 def --wrapped "main setup" [...args] { setup ...$args }
 def --wrapped "main doctor" [...args] { setup ...$args }
 def --wrapped "main generate" [--force (-f), ...args] { generate --force=$force ...$args }
