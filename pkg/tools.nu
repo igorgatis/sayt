@@ -5,27 +5,27 @@ export def --wrapped vrun [--trail="\n", cmd, ...args] {
   $in | ^$cmd ...$args
 }
 
-export def --wrapped _cue [...args] {
+export def --wrapped run-cue [...args] {
   let stub = $env.FILE_PWD | path join "cue.toml"
   vrun mise tool-stub $stub ...$args
 }
 
-export def --wrapped _uvx [...args] {
+export def --wrapped run-uvx [...args] {
   let stub = $env.FILE_PWD | path join "uvx.toml"
   vrun mise tool-stub $stub ...$args
 }
 
-export def --wrapped _docker [...args] {
+export def --wrapped run-docker [...args] {
   let stub = $env.FILE_PWD | path join "docker.toml"
   vrun mise tool-stub $stub ...$args
 }
 
-export def --wrapped _docker_compose [...args] {
+export def --wrapped run-docker-compose [...args] {
   let stub = $env.FILE_PWD | path join "docker.toml"
   vrun mise tool-stub $stub compose ...$args
 }
 
-export def --wrapped _nu [...args] {
+export def --wrapped run-nu [...args] {
   let stub = $env.FILE_PWD | path join "nu.toml"
   vrun mise tool-stub $stub ...$args
 }
