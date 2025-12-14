@@ -18,7 +18,7 @@
 
 #define MAX_ARGV_LEN 64
 #define MISE_VERSION "v2025.11.11"
-#define COSMOS_BIN_URL "https://cosmo.zip/pub/cosmos/bin"
+#define COSMOS_BIN_URL "https://cosmo.zip/pub/cosmos/v/4.0.2/bin"
 // TODO(igor.gatis): replace with final location.
 #define SAYT_MISE_LOCATION "github:igorgatis/sayt"
 
@@ -31,7 +31,8 @@
 #define debug_args(argv) do { \
   if (getenv("SAYT_CLI_DEBUG")) { \
     for (int _i = 0; (argv)[_i]; _i++) { \
-      fprintf(stderr, " %s", (argv)[_i]); \
+      if (_i > 0) fprintf(stderr, " "); \
+      fprintf(stderr, "%s", (argv)[_i]); \
     } \
     fprintf(stderr, "\n"); \
   } \
@@ -170,11 +171,8 @@ int init_context(char* in_argv0, Context* ctx) {
     return -1;
   }
 
-  char mise_bin_name[64];
-  snprintf(mise_bin_name, sizeof(mise_bin_name), "mise%s", exe_ext);
-
   if (is_win) {
-    join_path(ctx->mise_bin, sep, ctx->mise_dir, "mise", "bin", mise_bin_name);
+    join_path(ctx->mise_bin, sep, ctx->mise_dir, "mise", "bin", "mise.exe");
     char pkg_name[256];
     snprintf(pkg_name, sizeof(pkg_name), "mise-%s-%s-%s.zip", MISE_VERSION, detect_os(), detect_arch());
     join_path(ctx->mise_url, "/",
@@ -182,7 +180,7 @@ int init_context(char* in_argv0, Context* ctx) {
     join_path(ctx->mise_pkg, sep, ctx->mise_dir, pkg_name);
     join_path(ctx->unzip_bin, sep, cache_dir, "unzip");
   } else {
-    join_path(ctx->mise_bin, sep, ctx->mise_dir, mise_bin_name);
+    join_path(ctx->mise_bin, sep, ctx->mise_dir, "mise");
     char bin_name[256];
     snprintf(bin_name, sizeof(bin_name), "mise-%s-%s-%s", MISE_VERSION, detect_os(), detect_arch());
     join_path(ctx->mise_url, "/",
@@ -202,6 +200,7 @@ int init_context(char* in_argv0, Context* ctx) {
   snprintf(ctx->sayt_at_version, PATH_MAX, "%s@%s", SAYT_MISE_LOCATION, version);
 
   debugf("cache_dir=%s\n", cache_dir);
+  debugf("mise_dir=%s\n", ctx->mise_dir);
   debugf("mise_url=%s\n", ctx->mise_url);
   debugf("mise_bin=%s\n", ctx->mise_bin);
   debugf("sayt_nu=%s\n", ctx->sayt_nu);
