@@ -17,9 +17,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
-      - name: Create tarball
-        id: tarball
+      - name: Stamp version
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -32,14 +34,27 @@ jobs:
           HIGHEST=$(printf '%s\n%s' "$CURRENT" "$VERSION" | sort -V | tail -n1)
           echo "is_latest=$([[ "$HIGHEST" = "$VERSION" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
           echo -n "$VERSION" > pkg/.version
-          cd pkg && zip -r ../sayt-$VERSION.zip .
+
+      - uses: jdx/mise-action@v3
+        with:
+          version: 2025.11.11
+          install: true
+
+      - name: Build sayt binary
+        run: |
+          mise run build
+
+      - name: Zip package
+        run: |
+          cd pkg && zip -r ../sayt-${{ inputs.version }}.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version }}
           name: ${{ inputs.version }}
-          files: sayt-${{ inputs.version }}.zip
+          files: |
+            sayt-${{ inputs.version }}.zip
+            pkg/bin/sayt
           generate_release_notes: true
-          make_latest: ${{ steps.tarball.outputs.is_latest }}
-
+          make_latest: ${{ steps.version.outputs.is_latest }}

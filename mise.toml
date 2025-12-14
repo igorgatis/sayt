@@ -1,0 +1,17 @@
+[tools]
+"http:cosmocc" = { version = "4.0.2", url = "https://github.com/jart/cosmopolitan/releases/download/{{version}}/cosmocc-{{version}}.zip" }
+"http:cosmos-curl" = { version = "4.0.2", url = "https://cosmo.zip/pub/cosmos/v/{{version}}/bin/curl" }
+"http:cosmos-find" = { version = "4.0.2", url = "https://cosmo.zip/pub/cosmos/v/{{version}}/bin/find" }
+"http:cosmos-zip" = { version = "4.0.2", url = "https://cosmo.zip/pub/cosmos/v/{{version}}/bin/zip" }
+
+[tasks.update-certs]
+description = "Fetches certificates"
+run = "mise exec cosmos-curl -- curl https://curl.se/ca/cacert.pem -o usr/share/ssl/root/ca-certificates.crt"
+
+[tasks.build]
+description = "Build sayt APE binary"
+run = "mise exec http:cosmocc -- make"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "mise exec http:cosmocc -- make clean"
