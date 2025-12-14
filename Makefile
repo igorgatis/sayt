@@ -27,6 +27,7 @@ OBJS := $(addprefix $(BUILD_DIR)/,$(SRCS:.c=.o))
 all: $(OUT)
 
 $(OUT): $(BUILD_DIR)/sayt
+	@$(MKDIR) -p $(dir $@)
 	$(CP) $< $@
 
 $(BUILD_DIR)/sayt: $(OBJS) $(CACERT)
