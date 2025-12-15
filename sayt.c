@@ -225,23 +225,29 @@ int download_to_file(const char* in_url, const char* in_dest) {
   debugf("download_to_file %s -> %s\n", in_url, in_dest);
   char* data = NULL;
   int status = AppendFetch(&data, in_url);
+  if (status < 0) {
+    fprintf(stderr, "Error: Failed to fetch %s: %s\n", in_url, strerror(errno));
+    free(data);
+    return -1;
+  }
+  size_t len = data ? appendz(data).i : 0;
+  debugf("download_to_file status=%d size=%zu\n", status, len);
   if (status < 200 || status >= 300 || !data) {
-    fprintf(stderr, "Error: Failed to fetch %s (status=%d)\n", in_url, status);
+    fprintf(stderr, "Error: Failed to fetch %s: HTTP %d\n", in_url, status);
     free(data);
     return -1;
   }
   int fd = open(in_dest, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (fd < 0) {
-    fprintf(stderr, "Error: Failed to create %s\n", in_dest);
+    fprintf(stderr, "Error: Failed to create %s: %s\n", in_dest, strerror(errno));
     free(data);
     return -1;
   }
-  size_t len = appendz(data).i;
   ssize_t written = write(fd, data, len);
   close(fd);
   free(data);
   if (written != (ssize_t)len) {
-    fprintf(stderr, "Error: Failed to write %s\n", in_dest);
+    fprintf(stderr, "Error: Failed to write %s: %s\n", in_dest, strerror(errno));
     return -1;
   }
   return 0;
@@ -330,7 +336,7 @@ int main(int argc, char* argv[]) {
     append_argv(cmd, &new_argc, new_argv);
   } else {
     debugf("Bootstrapping %s\n", ctx.sayt_at_version);
-    char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sayt", NULL};
+    char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sayt.com", NULL};
     append_argv(cmd, &new_argc, new_argv);
   }
   append_argv(&argv[1], &new_argc, new_argv);
