@@ -24,12 +24,14 @@
 
 #define debugf(fmt, ...) do { \
   if (getenv("SAYT_CLI_DEBUG")) { \
+    fprintf(stderr, "[sayt] "); \
     fprintf(stderr, fmt, ##__VA_ARGS__); \
   } \
 } while(0)
 
 #define debug_args(argv) do { \
   if (getenv("SAYT_CLI_DEBUG")) { \
+    fprintf(stderr, "[sayt] "); \
     for (int _i = 0; (argv)[_i]; _i++) { \
       if (_i > 0) fprintf(stderr, " "); \
       fprintf(stderr, "%s", (argv)[_i]); \
@@ -187,6 +189,10 @@ int init_context(char* in_argv0, Context* ctx) {
              "https://github.com/jdx/mise/releases/download", MISE_VERSION, bin_name);
   }
 
+  char* version = getenv("SAYT_VERSION");
+  if (!version) version = "latest";
+  snprintf(ctx->sayt_at_version, PATH_MAX, "%s@%s", SAYT_MISE_LOCATION, version);
+
   char sayt_dir[PATH_MAX];
   if (resolve_sayt_dir(in_argv0, sep, sayt_dir) != 0) {
     return -1;
@@ -194,17 +200,22 @@ int init_context(char* in_argv0, Context* ctx) {
   join_path(ctx->sayt_nu, sep, sayt_dir, "sayt.nu");
   join_path(ctx->nu_toml, sep, sayt_dir, "nu.toml");
   ctx->sayt_installed = file_exists(ctx->sayt_nu) && file_exists(ctx->nu_toml);
+  if (!ctx->sayt_installed) {
+    sayt_dir[0] = '\0';
+    ctx->sayt_nu[0] = '\0';
+    ctx->nu_toml[0] = '\0';
+  }
 
-  char* version = getenv("SAYT_VERSION");
-  if (!version) version = "latest";
-  snprintf(ctx->sayt_at_version, PATH_MAX, "%s@%s", SAYT_MISE_LOCATION, version);
-
-  debugf("cache_dir=%s\n", cache_dir);
-  debugf("mise_dir=%s\n", ctx->mise_dir);
-  debugf("mise_url=%s\n", ctx->mise_url);
-  debugf("mise_bin=%s\n", ctx->mise_bin);
-  debugf("sayt_nu=%s\n", ctx->sayt_nu);
-  debugf("nu_toml=%s\n", ctx->nu_toml);
+  debugf("context:\n");
+  debugf("  cache_dir=%s\n", cache_dir);
+  debugf("  mise_dir=%s\n", ctx->mise_dir);
+  debugf("  mise_url=%s\n", ctx->mise_url);
+  debugf("  mise_bin=%s\n", ctx->mise_bin);
+  debugf("  sayt_at_version=%s\n", ctx->sayt_at_version);
+  debugf("  sayt_installed=%s\n", ctx->sayt_installed ? "YES" : "NO");
+  debugf("  sayt_dir=%s\n", sayt_dir);
+  debugf("  sayt_nu=%s\n", ctx->sayt_nu);
+  debugf("  nu_toml=%s\n", ctx->nu_toml);
   return 0;
 }
 
@@ -265,7 +276,6 @@ int fetch_mise(Context* ctx) {
   }
 
   if (endswith(ctx->mise_pkg, ".zip")) {
-    debugf("Fetching mise %s\n", ctx->mise_pkg);
     if (download_to_file(ctx->mise_url, ctx->mise_pkg) != 0) {
       fprintf(stderr, "Error: Failed to download mise from %s\n", ctx->mise_url);
       return -1;
@@ -278,7 +288,6 @@ int fetch_mise(Context* ctx) {
       return -1;
     }
   } else {
-    debugf("Fetching mise %s\n", ctx->mise_bin);
     if (download_to_file(ctx->mise_url, ctx->mise_bin) != 0) {
       fprintf(stderr, "Error: Failed to download mise from %s\n", ctx->mise_url);
       return -1;
@@ -306,7 +315,6 @@ int main(int argc, char* argv[]) {
   if (init_context(argv[0], &ctx) != 0) {
     return 1;
   }
-
   if (fetch_mise(&ctx) != 0) {
     return 1;
   }
@@ -315,9 +323,11 @@ int main(int argc, char* argv[]) {
   char* new_argv[MAX_ARGV_LEN];
 
   if (ctx.sayt_installed) {
+    debugf("Running %s\n", ctx.sayt_nu);
     char* cmd[] = {ctx.mise_bin, "tool-stub", ctx.nu_toml, ctx.sayt_nu, NULL};
     append_argv(cmd, &new_argc, new_argv);
   } else {
+    debugf("Bootstrapping %s\n", ctx.sayt_at_version);
     char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sayt", NULL};
     append_argv(cmd, &new_argc, new_argv);
   }
