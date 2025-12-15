@@ -41,6 +41,8 @@ jobs:
           install: true
 
       - name: Build sayt binary
+        env:
+          SAYT_BUILD_VERSION: ${{ inputs.version }}
         run: |
           mise run build
 
@@ -55,6 +57,6 @@ jobs:
           name: ${{ inputs.version }}
           files: |
             sayt-${{ inputs.version }}.zip
-            pkg/bin/sayt
+            pkg/bin/sayt.com
           generate_release_notes: true
           make_latest: ${{ steps.version.outputs.is_latest }}

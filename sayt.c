@@ -16,22 +16,30 @@
 #include <libc/stdio/append.h>
 #include <net/https/fetch.h>
 
-#define MAX_ARGV_LEN 64
-#define MISE_VERSION "v2025.11.11"
-#define COSMOS_BIN_URL "https://cosmo.zip/pub/cosmos/v/4.0.2/bin"
+#define SAYT_VERSION_ENV "SAYT_VERSION"
+#define SAYT_CLI_DEBUG_ENV "SAYT_CLI_DEBUG"
 // TODO(igor.gatis): replace with final location.
 #define SAYT_MISE_LOCATION "github:igorgatis/sayt"
+#ifndef SAYT_BUILD_VERSION
+#define SAYT_BUILD_VERSION "dev"
+#endif
+
+#define MISE_VERSION "v2025.11.11"
+#define MISE_RELEASES_URL "https://github.com/jdx/mise/releases/download"
+#define COSMOS_BIN_URL "https://cosmo.zip/pub/cosmos/v/4.0.2/bin"
+
+#define MAX_ARGV_LEN 64
 
 #define debugf(fmt, ...) do { \
-  if (getenv("SAYT_CLI_DEBUG")) { \
-    fprintf(stderr, "[sayt] "); \
+  if (getenv(SAYT_CLI_DEBUG_ENV)) { \
+    fprintf(stderr, "[sayt:%s] ", SAYT_BUILD_VERSION); \
     fprintf(stderr, fmt, ##__VA_ARGS__); \
   } \
 } while(0)
 
 #define debug_args(argv) do { \
-  if (getenv("SAYT_CLI_DEBUG")) { \
-    fprintf(stderr, "[sayt] "); \
+  if (getenv(SAYT_CLI_DEBUG_ENV)) { \
+    fprintf(stderr, "[sayt:%s] ", SAYT_BUILD_VERSION); \
     for (int _i = 0; (argv)[_i]; _i++) { \
       if (_i > 0) fprintf(stderr, " "); \
       fprintf(stderr, "%s", (argv)[_i]); \
@@ -108,11 +116,11 @@ void resolve_cache_dir(char* out_cache_dir) {
   const char* env;
   if (IsWindows()) {
     if ((env = getenv("LOCALAPPDATA"))) {
-      join_path(out_cache_dir, "\\", env, "sayt");
+      join_path(out_cache_dir, "/", env, "sayt");
     } else if ((env = getenv("TEMP")) || (env = getenv("TMP"))) {
-      join_path(out_cache_dir, "\\", env, "sayt");
+      join_path(out_cache_dir, "/", env, "sayt");
     } else {
-      join_path(out_cache_dir, "\\", "C:", "Temp", "sayt");
+      join_path(out_cache_dir, "/", "C", "Temp", "sayt");
     }
     return;
   }
@@ -133,14 +141,14 @@ void resolve_cache_dir(char* out_cache_dir) {
   }
 }
 
-int resolve_sayt_dir(const char* in_argv0, const char* in_sep, char* out_dir) {
+int resolve_sayt_dir(const char* in_argv0, char* out_dir) {
   char resolved[PATH_MAX];
   if (realpath(in_argv0, resolved) == NULL) {
     strncpy(resolved, in_argv0, sizeof(resolved) - 1);
   }
   char* dir = dirname(resolved);
   char parent[PATH_MAX];
-  join_path(parent, in_sep, dir, "..");
+  join_path(parent, "/", dir, "..");
   char* resolved_parent = realpath(parent, NULL);
   if (resolved_parent) {
     strncpy(out_dir, resolved_parent, PATH_MAX - 1);
@@ -154,10 +162,6 @@ int resolve_sayt_dir(const char* in_argv0, const char* in_sep, char* out_dir) {
 int init_context(char* in_argv0, Context* ctx) {
   memset(ctx, 0, sizeof(Context));
 
-  int is_win = IsWindows();
-  const char* sep = is_win ? "\\" : "/";
-  const char* exe_ext = is_win ? ".exe" : "";
-
   char cache_dir[PATH_MAX];
   resolve_cache_dir(cache_dir);
   if (makedirs(cache_dir, 0755) != 0 && errno != EEXIST) {
@@ -167,38 +171,36 @@ int init_context(char* in_argv0, Context* ctx) {
 
   char mise_version_dir[64];
   snprintf(mise_version_dir, sizeof(mise_version_dir), "mise-%s", MISE_VERSION);
-  join_path(ctx->mise_dir, sep, cache_dir, mise_version_dir);
+  join_path(ctx->mise_dir, "/", cache_dir, mise_version_dir);
   if (makedirs(ctx->mise_dir, 0755) != 0 && errno != EEXIST) {
     fprintf(stderr, "Error: Failed to create %s\n", ctx->mise_dir);
     return -1;
   }
 
-  if (is_win) {
-    join_path(ctx->mise_bin, sep, ctx->mise_dir, "mise", "bin", "mise.exe");
+  if (IsWindows()) {
+    join_path(ctx->mise_bin, "/", ctx->mise_dir, "mise", "bin", "mise.exe");
     char pkg_name[256];
     snprintf(pkg_name, sizeof(pkg_name), "mise-%s-%s-%s.zip", MISE_VERSION, detect_os(), detect_arch());
-    join_path(ctx->mise_url, "/",
-             "https://github.com/jdx/mise/releases/download", MISE_VERSION, pkg_name);
-    join_path(ctx->mise_pkg, sep, ctx->mise_dir, pkg_name);
-    join_path(ctx->unzip_bin, sep, cache_dir, "unzip");
+    join_path(ctx->mise_url, "/", MISE_RELEASES_URL, MISE_VERSION, pkg_name);
+    join_path(ctx->mise_pkg, "/", ctx->mise_dir, pkg_name);
+    join_path(ctx->unzip_bin, "/", cache_dir, "unzip");
   } else {
-    join_path(ctx->mise_bin, sep, ctx->mise_dir, "mise");
+    join_path(ctx->mise_bin, "/", ctx->mise_dir, "mise");
     char bin_name[256];
     snprintf(bin_name, sizeof(bin_name), "mise-%s-%s-%s", MISE_VERSION, detect_os(), detect_arch());
-    join_path(ctx->mise_url, "/",
-             "https://github.com/jdx/mise/releases/download", MISE_VERSION, bin_name);
+    join_path(ctx->mise_url, "/", MISE_RELEASES_URL, MISE_VERSION, bin_name);
   }
 
-  char* version = getenv("SAYT_VERSION");
+  char* version = getenv(SAYT_VERSION_ENV);
   if (!version) version = "latest";
   snprintf(ctx->sayt_at_version, PATH_MAX, "%s@%s", SAYT_MISE_LOCATION, version);
 
   char sayt_dir[PATH_MAX];
-  if (resolve_sayt_dir(in_argv0, sep, sayt_dir) != 0) {
+  if (resolve_sayt_dir(in_argv0, sayt_dir) != 0) {
     return -1;
   }
-  join_path(ctx->sayt_nu, sep, sayt_dir, "sayt.nu");
-  join_path(ctx->nu_toml, sep, sayt_dir, "nu.toml");
+  join_path(ctx->sayt_nu, "/", sayt_dir, "sayt.nu");
+  join_path(ctx->nu_toml, "/", sayt_dir, "nu.toml");
   ctx->sayt_installed = file_exists(ctx->sayt_nu) && file_exists(ctx->nu_toml);
   if (!ctx->sayt_installed) {
     sayt_dir[0] = '\0';
