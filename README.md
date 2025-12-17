@@ -39,3 +39,11 @@ If you use [mise](https://mise.jdx.dev/), you can install SAYT as a tool:
 ```sh
 mise use github:igorgatis/sayt
 ```
+
+### Option D: Docker
+
+Copy the binary from the container image in your Dockerfile:
+
+```dockerfile
+COPY --from=ghcr.io/igorgatis/sayt:latest /sayt /usr/local/bin/sayt
+```
