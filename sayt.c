@@ -71,6 +71,7 @@ void join_path_impl(char* out, const char* in_sep, ...) {
 }
 
 typedef struct {
+  char cache_dir[PATH_MAX];
   char mise_dir[PATH_MAX];
   char mise_bin[PATH_MAX];
   char mise_url[PATH_MAX];
@@ -188,33 +189,38 @@ int write_file(const char* data, const char* dst_path) {
 }
 
 int setup_linux_ssl_certs(const char* cache_dir) {
+#ifdef EMBEDDED_CA_CERTS_DATA
   // When EMBEDDED_CA_CERTS_DATA is defined, it means this is a regular
   // binary (not an APE binary) and thus EMBEDDED_CA_CERTS_FILE is missing.
-#ifdef EMBEDDED_CA_CERTS_DATA
-  debugf("Writing SSL embeded certs to %s\n", EMBEDDED_CA_CERTS_FILE);
-  if (makedirs(EMBEDDED_CA_CERTS_DIR, 0755) != 0 && errno != EEXIST) {
-    fprintf(stderr, "Error: Failed to create %s\n", EMBEDDED_CA_CERTS_DIR);
-    return -1;
-  }
-  if (write_file(EMBEDDED_CA_CERTS_DATA, EMBEDDED_CA_CERTS_FILE) != 0) {
-    return -1;
+  if (!file_exists(EMBEDDED_CA_CERTS_FILE)) {
+    debugf("Writing SSL embeded certs to %s\n", EMBEDDED_CA_CERTS_FILE);
+    if (makedirs(EMBEDDED_CA_CERTS_DIR, 0755) != 0 && errno != EEXIST) {
+      fprintf(stderr, "Error: Failed to create %s\n", EMBEDDED_CA_CERTS_DIR);
+      return -1;
+    }
+    if (write_file(EMBEDDED_CA_CERTS_DATA, EMBEDDED_CA_CERTS_FILE) != 0) {
+      return -1;
+    }
   }
 #endif
 
   char cert_path[PATH_MAX];
   join_path(cert_path, "/", cache_dir, CA_CERTS_FILE);
-  debugf("Copying SSL cert from %s to %s\n", EMBEDDED_CA_CERTS_FILE, cert_path);
-  if (copy_file(EMBEDDED_CA_CERTS_FILE, cert_path) != 0) {
-    return -1;
+  if (!file_exists(cert_path)) {
+    debugf("Copying SSL cert from %s to %s\n", EMBEDDED_CA_CERTS_FILE, cert_path);
+    if (copy_file(EMBEDDED_CA_CERTS_FILE, cert_path) != 0) {
+      return -1;
+    }
   }
+
   debugf("SSL_CERT_FILE=%s\n", cert_path);
   setenv("SSL_CERT_FILE", cert_path, 0);
   return 0;
 }
 
-char * safe_getenv(const char* name) {
+const char * safe_getenv(const char* name) {
   const char* env = getenv(name);
-  if (env && strcmp(env, "") != 0) {
+  if (env && strcmp(env, "") != 0 && strcmp(env, "/") != 0) {
     return env;
   }
   return NULL;
@@ -270,22 +276,15 @@ int resolve_sayt_dir(const char* in_argv0, char* out_dir) {
 int init_context(const char* in_argv0, Context* ctx) {
   memset(ctx, 0, sizeof(Context));
 
-  char cache_dir[PATH_MAX];
-  resolve_cache_dir(cache_dir);
-  if (makedirs(cache_dir, 0755) != 0 && errno != EEXIST) {
-    fprintf(stderr, "Error: Failed to create %s\n", cache_dir);
+  resolve_cache_dir(ctx->cache_dir);
+  if (makedirs(ctx->cache_dir, 0755) != 0 && errno != EEXIST) {
+    fprintf(stderr, "Error: Failed to create %s\n", ctx->cache_dir);
     return -1;
-  }
-
-  if (IsLinux()) {
-    if (setup_linux_ssl_certs(cache_dir) != 0) {
-      return -1;
-    }
   }
 
   char mise_version_dir[64];
   snprintf(mise_version_dir, sizeof(mise_version_dir), "mise-%s", MISE_VERSION);
-  join_path(ctx->mise_dir, "/", cache_dir, mise_version_dir);
+  join_path(ctx->mise_dir, "/", ctx->cache_dir, mise_version_dir);
   if (makedirs(ctx->mise_dir, 0755) != 0 && errno != EEXIST) {
     fprintf(stderr, "Error: Failed to create %s\n", ctx->mise_dir);
     return -1;
@@ -297,7 +296,7 @@ int init_context(const char* in_argv0, Context* ctx) {
     snprintf(pkg_name, sizeof(pkg_name), "mise-%s-%s-%s.zip", MISE_VERSION, detect_os(), detect_arch());
     join_path(ctx->mise_url, "/", MISE_RELEASES_URL, MISE_VERSION, pkg_name);
     join_path(ctx->mise_pkg, "/", ctx->mise_dir, pkg_name);
-    join_path(ctx->unzip_bin, "/", cache_dir, "unzip");
+    join_path(ctx->unzip_bin, "/", ctx->cache_dir, "unzip");
   } else {
     join_path(ctx->mise_bin, "/", ctx->mise_dir, "mise");
     char bin_name[256];
@@ -321,13 +320,14 @@ int init_context(const char* in_argv0, Context* ctx) {
   join_path(ctx->nu_toml, "/", sayt_dir, "nu.toml");
 
   debugf("context:\n");
-  debugf("  cache_dir=%s\n", cache_dir);
+  debugf("  cache_dir=%s\n", ctx->cache_dir);
   debugf("  mise_dir=%s\n", ctx->mise_dir);
   debugf("  mise_url=%s\n", ctx->mise_url);
   debugf("  mise_bin=%s\n", ctx->mise_bin);
   debugf("  sayt_at_version=%s\n", ctx->sayt_at_version);
-  debugf("  sayt_installed=%s\n", ctx->sayt_installed ? "YES" : "NO");
   debugf("  sayt_dir=%s\n", sayt_dir);
+  debugf("  sayt_version=%s\n", ctx->sayt_version);
+  debugf("  sayt_installed=%s\n", ctx->sayt_installed ? "YES" : "NO");
   debugf("  sayt_nu=%s\n", ctx->sayt_nu);
   debugf("  nu_toml=%s\n", ctx->nu_toml);
   return 0;
@@ -434,6 +434,11 @@ int main(int argc, char* argv[]) {
   Context ctx;
   if (init_context(argv[0], &ctx) != 0) {
     return 1;
+  }
+  if (IsLinux()) {
+    if (setup_linux_ssl_certs(ctx.cache_dir) != 0) {
+      return -1;
+    }
   }
   if (fetch_mise(&ctx) != 0) {
     return 1;
