@@ -30,6 +30,9 @@
 
 #define MAX_ARGV_LEN 64
 
+#define EMBEDDED_CA_CERTS "/zip/usr/share/ssl/root/ca-certificates.crt"
+#define CA_CERTS_FILE "ca-certificates.crt"
+
 #define debugf(fmt, ...) do { \
   if (getenv(SAYT_CLI_DEBUG_ENV)) { \
     fprintf(stderr, "[sayt:%s] ", SAYT_BUILD_VERSION); \
@@ -112,6 +115,60 @@ int is_executable(const char* in_path) {
   return access(in_path, X_OK) == 0;
 }
 
+int setup_ssl_certs(const char* cache_dir) {
+  if (!IsLinux()) return 0;
+
+  char cert_path[PATH_MAX];
+  join_path(cert_path, "/", cache_dir, CA_CERTS_FILE);
+
+  if (file_exists(cert_path)) {
+    debugf("SSL certs already at %s\n", cert_path);
+    setenv("SSL_CERT_FILE", cert_path, 0);
+    return 0;
+  }
+
+  debugf("Extracting SSL certs to %s\n", cert_path);
+
+  int src_fd = open(EMBEDDED_CA_CERTS, O_RDONLY);
+  if (src_fd < 0) {
+    debugf("No embedded CA certs at %s\n", EMBEDDED_CA_CERTS);
+    return 0;
+  }
+
+  int dst_fd = open(cert_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (dst_fd < 0) {
+    close(src_fd);
+    fprintf(stderr, "Error: Failed to create %s: %s\n", cert_path, strerror(errno));
+    return -1;
+  }
+
+  char buf[8192];
+  ssize_t n;
+  while ((n = read(src_fd, buf, sizeof(buf))) > 0) {
+    ssize_t written = write(dst_fd, buf, n);
+    if (written != n) {
+      close(src_fd);
+      close(dst_fd);
+      unlink(cert_path);
+      fprintf(stderr, "Error: Failed to write %s: %s\n", cert_path, strerror(errno));
+      return -1;
+    }
+  }
+
+  close(src_fd);
+  close(dst_fd);
+
+  if (n < 0) {
+    unlink(cert_path);
+    fprintf(stderr, "Error: Failed to read %s: %s\n", EMBEDDED_CA_CERTS, strerror(errno));
+    return -1;
+  }
+
+  setenv("SSL_CERT_FILE", cert_path, 0);
+  debugf("SSL_CERT_FILE=%s\n", cert_path);
+  return 0;
+}
+
 void resolve_cache_dir(char* out_cache_dir) {
   const char* env;
   if (IsWindows()) {
@@ -166,6 +223,10 @@ int init_context(char* in_argv0, Context* ctx) {
   resolve_cache_dir(cache_dir);
   if (makedirs(cache_dir, 0755) != 0 && errno != EEXIST) {
     fprintf(stderr, "Error: Failed to create %s\n", cache_dir);
+    return -1;
+  }
+
+  if (setup_ssl_certs(cache_dir) != 0) {
     return -1;
   }
 
