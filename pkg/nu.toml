@@ -12,14 +12,14 @@ checksum = "blake3:a832ab8edf716d244ba3490ab82a486e7a94f6cff35b33b6ddb829e36b1b9
 size = 57377102 # 54.72 MiB
 
 [platforms.linux-amd64]
-url = "https://github.com/nushell/nushell/releases/download/0.107.0/nu-0.107.0-x86_64-unknown-linux-gnu.tar.gz"
-checksum = "blake3:1c05e8b89e281fe6b96019893c922aa3b25c350ace141e7ee53179f6c87d0af4"
-size = 62658707 # 59.76 MiB
+url = "https://github.com/nushell/nushell/releases/download/0.107.0/nu-0.107.0-x86_64-unknown-linux-musl.tar.gz"
+checksum = "blake3:9be8cb8bb07210bf23dc5c3672f0879105fc9dac37632c3e7274312548fe62f0"
+size = 63274296 # 60.34 MiB
 
 [platforms.linux-arm64]
-url = "https://github.com/nushell/nushell/releases/download/0.107.0/nu-0.107.0-aarch64-unknown-linux-gnu.tar.gz"
-checksum = "blake3:dc8e2b77588bf1cfb5e4a97ea9914abaab2de77ca5e2bc8cbef1273ea8601626"
-size = 61579843 # 58.73 MiB
+url = "https://github.com/nushell/nushell/releases/download/0.107.0/nu-0.107.0-aarch64-unknown-linux-musl.tar.gz"
+checksum = "blake3:2d26e6cab5d797d93efbb9c88225521ae0171a665062fdb5734c3011a6af5b49"
+size = 60363444 # 57.56 MiB
 
 [platforms.windows-amd64]
 url = "https://github.com/nushell/nushell/releases/download/0.107.0/nu-0.107.0-x86_64-pc-windows-msvc.zip"
