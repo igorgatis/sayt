@@ -344,7 +344,8 @@ int main(int argc, char* argv[]) {
   append_argv(&argv[1], &new_argc, new_argv);
 
   debug_args(new_argv);
-  execv(new_argv[0], new_argv);
-  perror("execv failed");
+  extern char** environ;
+  execve(new_argv[0], new_argv, environ);
+  perror("execve failed");
   return 1;
 }
