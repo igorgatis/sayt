@@ -448,9 +448,11 @@ int main(int argc, char* argv[]) {
   }
   append_argv(&new_argc, new_argv, &argv[1]);
 
+  // debugf("execve");
+  debugf("systemvpe");
   debug_args(new_argv);
   extern char** environ;
-  //execve(new_argv[0], new_argv, environ);
+  // execve(new_argv[0], new_argv, environ);
   systemvpe(new_argv[0], new_argv, environ);
   perror("execve failed");
   return 1;
