@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sys/utsname.h>
 #include <libgen.h>
+#include <libc/cosmo.h>
 #include <libc/dce.h>
 #include <libc/calls/calls.h>
 #include <libc/str/str.h>
@@ -79,6 +80,7 @@ typedef struct {
   char unzip_bin[PATH_MAX];
 
   bool sayt_installed;
+  char sayt_version[PATH_MAX];
   char sayt_nu[PATH_MAX];
   char nu_toml[PATH_MAX];
 
@@ -106,6 +108,17 @@ const char* detect_arch() {
     if (strcmp(uts.machine, "armv7l") == 0) return "armv7";
   }
   return "unknown";
+}
+
+char* sayt_bin_name() {
+  // if (IsLinux()) {
+  //   const char* arch = detect_arch();
+  //   if (strcmp(arch, "x64") == 0) {
+  //     return "sayt-amd64.elf";
+  //   }
+  //   return  "sayt-arm64.elf";
+  // }
+  return "sayt.com";
 }
 
 int file_exists(const char* in_path) {
@@ -247,7 +260,7 @@ int resolve_sayt_dir(const char* in_argv0, char* out_dir) {
   return -1;
 }
 
-int init_context(char* in_argv0, Context* ctx) {
+int init_context(const char* in_argv0, Context* ctx) {
   memset(ctx, 0, sizeof(Context));
 
   char cache_dir[PATH_MAX];
@@ -295,14 +308,10 @@ int init_context(char* in_argv0, Context* ctx) {
   if (resolve_sayt_dir(in_argv0, sayt_dir) != 0) {
     return -1;
   }
+  join_path(ctx->sayt_version, "/", sayt_dir, ".version");
+  ctx->sayt_installed = file_exists(ctx->sayt_version);
   join_path(ctx->sayt_nu, "/", sayt_dir, "sayt.nu");
   join_path(ctx->nu_toml, "/", sayt_dir, "nu.toml");
-  ctx->sayt_installed = file_exists(ctx->sayt_nu) && file_exists(ctx->nu_toml);
-  if (!ctx->sayt_installed) {
-    sayt_dir[0] = '\0';
-    ctx->sayt_nu[0] = '\0';
-    ctx->nu_toml[0] = '\0';
-  }
 
   debugf("context:\n");
   debugf("  cache_dir=%s\n", cache_dir);
@@ -407,11 +416,11 @@ int fetch_mise(Context* ctx) {
   return 0;
 }
 
-void append_argv(char* in_args[], int* io_argc, char* out_argv[]) {
-  for (int i = 0; in_args[i] && *io_argc < MAX_ARGV_LEN - 1; i++) {
-    out_argv[(*io_argc)++] = in_args[i];
+void append_argv(int* out_argc, char* out_argv[], char *const in_args[]) {
+  for (int i = 0; in_args[i] && *out_argc < MAX_ARGV_LEN - 1; i++) {
+    out_argv[(*out_argc)++] = in_args[i];
   }
-  out_argv[*io_argc] = NULL;
+  out_argv[*out_argc] = NULL;
 }
 
 int main(int argc, char* argv[]) {
@@ -428,23 +437,21 @@ int main(int argc, char* argv[]) {
 
   if (ctx.sayt_installed) {
     debugf("Running %s\n", ctx.sayt_nu);
-    char* cmd[] = {ctx.mise_bin, "tool-stub", ctx.nu_toml, ctx.sayt_nu, NULL};
-    append_argv(cmd, &new_argc, new_argv);
+    append_argv(&new_argc, new_argv, (char *[]){
+      ctx.mise_bin, "tool-stub", ctx.nu_toml, ctx.sayt_nu, NULL
+    });
   } else {
     debugf("Bootstrapping %s\n", ctx.sayt_at_version);
-    if (IsWindows()) {
-      char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sayt.com", NULL};
-      append_argv(cmd, &new_argc, new_argv);
-    } else {
-      char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sh", "sayt.com", NULL};
-      append_argv(cmd, &new_argc, new_argv);
-    }
+    append_argv(&new_argc, new_argv, (char *[]){
+      ctx.mise_bin, "exec", ctx.sayt_at_version, "--", sayt_bin_name(), NULL
+    });
   }
-  append_argv(&argv[1], &new_argc, new_argv);
+  append_argv(&new_argc, new_argv, &argv[1]);
 
   debug_args(new_argv);
   extern char** environ;
-  execve(new_argv[0], new_argv, environ);
+  //execve(new_argv[0], new_argv, environ);
+  systemvpe(new_argv[0], new_argv, environ);
   perror("execve failed");
   return 1;
 }

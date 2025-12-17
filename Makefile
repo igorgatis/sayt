@@ -15,10 +15,10 @@ CERTS_H = $(BUILD_DIR)/certs.h
 BUILD_DIR = build
 BUILD_APE = $(BUILD_DIR)/sayt.com
 BUILD_ELF = $(BUILD_DIR)/sayt.elf
-BUILD_AMD64 = $(BUILD_DIR)/sayt-amd64.elf
-BUILD_ARM64 = $(BUILD_DIR)/sayt-arm64.elf
 PKG_BIN_DIR = pkg/bin
-PKG_BIN_OUT = $(PKG_BIN_DIR)/sayt.com
+PKG_BIN_APE = $(PKG_BIN_DIR)/sayt.com
+PKG_BIN_X64 = $(PKG_BIN_DIR)/sayt-amd64.elf
+PKG_BIN_ARM64 = $(PKG_BIN_DIR)/sayt-arm64.elf
 SAYT_BUILD_VERSION ?= dev
 
 # Flags
@@ -37,11 +37,19 @@ SAYT_OBJ_ELF = $(BUILD_DIR)/sayt-elf.o
 
 .PHONY: all clean
 
-all: $(PKG_BIN_OUT) $(BUILD_AMD64) $(BUILD_ARM64)
+all: $(PKG_BIN_APE) $(PKG_BIN_X64) $(PKG_BIN_ARM64)
 
-$(PKG_BIN_OUT): $(BUILD_APE)
+$(PKG_BIN_APE): $(BUILD_APE)
 	@$(MKDIR) -p $(dir $@)
 	$(CP) $< $@
+
+$(PKG_BIN_X64): $(BUILD_ELF)
+	@$(MKDIR) -p $(dir $@)
+	$(STRIP_X86_64) -o $@ $(BUILD_ELF).com.dbg
+
+$(PKG_BIN_ARM64): $(BUILD_ELF)
+	@$(MKDIR) -p $(dir $@)
+	$(STRIP_AARCH64) -o $@ $(BUILD_ELF).aarch64.elf
 
 $(CERTS_H): $(CACERT)
 	@$(MKDIR) -p $(dir $@)
@@ -66,12 +74,6 @@ $(SAYT_OBJ_ELF): sayt.c $(CERTS_H)
 $(BUILD_ELF): $(SAYT_OBJ_ELF) $(LIB_OBJS)
 	@$(MKDIR) -p $(dir $@)
 	$(CC) $(CFLAGS) -o $@ $(SAYT_OBJ_ELF) $(LIB_OBJS)
-
-$(BUILD_AMD64): $(BUILD_ELF)
-	$(STRIP_X86_64) -o $@ $(BUILD_ELF).com.dbg
-
-$(BUILD_ARM64): $(BUILD_ELF)
-	$(STRIP_AARCH64) -o $@ $(BUILD_ELF).aarch64.elf
 
 $(BUILD_DIR)/%.o: %.c
 	@$(MKDIR) -p $(dir $@)

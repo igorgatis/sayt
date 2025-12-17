@@ -1,4 +1,4 @@
 FROM scratch
 ARG TARGETARCH
-COPY build/sayt-${TARGETARCH}.elf /sayt
+COPY pkg/bin/sayt-${TARGETARCH}.elf /sayt
 CMD ["/sayt"]
