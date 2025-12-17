@@ -212,12 +212,20 @@ int setup_linux_ssl_certs(const char* cache_dir) {
   return 0;
 }
 
+char * safe_getenv(const char* name) {
+  const char* env = getenv(name);
+  if (env && strcmp(env, "") != 0) {
+    return env;
+  }
+  return NULL;
+}
+
 void resolve_cache_dir(char* out_cache_dir) {
-  const char* env;
+  const char* env = NULL;
   if (IsWindows()) {
-    if ((env = getenv("LOCALAPPDATA"))) {
+    if ((env = safe_getenv("LOCALAPPDATA"))) {
       join_path(out_cache_dir, "/", env, "sayt");
-    } else if ((env = getenv("TEMP")) || (env = getenv("TMP"))) {
+    } else if ((env = safe_getenv("TEMP")) || (env = safe_getenv("TMP"))) {
       join_path(out_cache_dir, "/", env, "sayt");
     } else {
       join_path(out_cache_dir, "/", "C", "Temp", "sayt");
@@ -225,16 +233,16 @@ void resolve_cache_dir(char* out_cache_dir) {
     return;
   }
   if (IsXnu()) {
-    if ((env = getenv("HOME"))) {
+    if ((env = safe_getenv("HOME"))) {
       join_path(out_cache_dir, "/", env, "Library", "Caches", "sayt");
     } else {
       join_path(out_cache_dir, "/", "", "tmp", "sayt");
     }
     return;
   }
-  if ((env = getenv("XDG_CACHE_HOME"))) {
+  if ((env = safe_getenv("XDG_CACHE_HOME"))) {
     join_path(out_cache_dir, "/", env, "sayt");
-  } else if ((env = getenv("HOME"))) {
+  } else if ((env = safe_getenv("HOME"))) {
     join_path(out_cache_dir, "/", env, ".cache", "sayt");
   } else {
     join_path(out_cache_dir, "/", "", "tmp", "sayt");
