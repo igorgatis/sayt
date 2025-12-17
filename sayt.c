@@ -30,8 +30,9 @@
 
 #define MAX_ARGV_LEN 64
 
-#define EMBEDDED_CA_CERTS "/zip/usr/share/ssl/root/ca-certificates.crt"
+#define EMBEDDED_CA_CERTS_DIR "/zip/usr/share/ssl/root"
 #define CA_CERTS_FILE "ca-certificates.crt"
+#define EMBEDDED_CA_CERTS_FILE EMBEDDED_CA_CERTS_DIR "/" CA_CERTS_FILE
 
 #define debugf(fmt, ...) do { \
   if (getenv(SAYT_CLI_DEBUG_ENV)) { \
@@ -115,30 +116,17 @@ int is_executable(const char* in_path) {
   return access(in_path, X_OK) == 0;
 }
 
-int setup_ssl_certs(const char* cache_dir) {
-  if (!IsLinux()) return 0;
-
-  char cert_path[PATH_MAX];
-  join_path(cert_path, "/", cache_dir, CA_CERTS_FILE);
-
-  if (file_exists(cert_path)) {
-    debugf("SSL certs already at %s\n", cert_path);
-    setenv("SSL_CERT_FILE", cert_path, 0);
-    return 0;
-  }
-
-  debugf("Extracting SSL certs to %s\n", cert_path);
-
-  int src_fd = open(EMBEDDED_CA_CERTS, O_RDONLY);
+int copy_file(const char* src_path, const char* dst_path) {
+  int src_fd = open(src_path, O_RDONLY);
   if (src_fd < 0) {
-    debugf("No embedded CA certs at %s\n", EMBEDDED_CA_CERTS);
-    return 0;
+    fprintf(stderr, "Error: Failed to open %s: %s\n", src_path, strerror(errno));
+    return -1;
   }
 
-  int dst_fd = open(cert_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  int dst_fd = open(dst_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (dst_fd < 0) {
     close(src_fd);
-    fprintf(stderr, "Error: Failed to create %s: %s\n", cert_path, strerror(errno));
+    fprintf(stderr, "Error: Failed to create %s: %s\n", dst_path, strerror(errno));
     return -1;
   }
 
@@ -149,8 +137,8 @@ int setup_ssl_certs(const char* cache_dir) {
     if (written != n) {
       close(src_fd);
       close(dst_fd);
-      unlink(cert_path);
-      fprintf(stderr, "Error: Failed to write %s: %s\n", cert_path, strerror(errno));
+      unlink(dst_path);
+      fprintf(stderr, "Error: Failed to write %s: %s\n", dst_path, strerror(errno));
       return -1;
     }
   }
@@ -159,13 +147,56 @@ int setup_ssl_certs(const char* cache_dir) {
   close(dst_fd);
 
   if (n < 0) {
-    unlink(cert_path);
-    fprintf(stderr, "Error: Failed to read %s: %s\n", EMBEDDED_CA_CERTS, strerror(errno));
+    unlink(dst_path);
+    fprintf(stderr, "Error: Failed to read %s: %s\n", src_path, strerror(errno));
     return -1;
   }
 
-  setenv("SSL_CERT_FILE", cert_path, 0);
+  return 0;
+}
+
+int write_file(const char* data, const char* dst_path) {
+  int dst_fd = open(dst_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (dst_fd < 0) {
+    fprintf(stderr, "Error: Failed to create %s: %s\n", dst_path, strerror(errno));
+    return -1;
+  }
+
+  size_t len = strlen(data);
+  ssize_t written = write(dst_fd, data, len);
+  close(dst_fd);
+
+  if (written != (ssize_t)len) {
+    unlink(dst_path);
+    fprintf(stderr, "Error: Failed to write %s: %s\n", dst_path, strerror(errno));
+    return -1;
+  }
+
+  return 0;
+}
+
+int setup_linux_ssl_certs(const char* cache_dir) {
+  // When EMBEDDED_CA_CERTS_DATA is defined, it means this is a regular
+  // binary (not an APE binary) and thus EMBEDDED_CA_CERTS_FILE is missing.
+#ifdef EMBEDDED_CA_CERTS_DATA
+  debugf("Writing SSL embeded certs to %s\n", EMBEDDED_CA_CERTS_FILE);
+  if (makedirs(EMBEDDED_CA_CERTS_DIR, 0755) != 0 && errno != EEXIST) {
+    fprintf(stderr, "Error: Failed to create %s\n", EMBEDDED_CA_CERTS_DIR);
+    return -1;
+  }
+  if (write_file(EMBEDDED_CA_CERTS_DATA, EMBEDDED_CA_CERTS_FILE) != 0) {
+    return -1;
+  }
+#endif
+
+  char cert_path[PATH_MAX];
+  join_path(cert_path, "/", cache_dir, CA_CERTS_FILE);
+  debugf("Copying SSL cert from %s to %s\n", EMBEDDED_CA_CERTS_FILE, cert_path);
+  if (copy_file(EMBEDDED_CA_CERTS_FILE, cert_path) != 0) {
+    return -1;
+  }
   debugf("SSL_CERT_FILE=%s\n", cert_path);
+  setenv("SSL_CERT_FILE", cert_path, 0);
   return 0;
 }
 
@@ -226,8 +257,10 @@ int init_context(char* in_argv0, Context* ctx) {
     return -1;
   }
 
-  if (setup_ssl_certs(cache_dir) != 0) {
-    return -1;
+  if (IsLinux()) {
+    if (setup_linux_ssl_certs(cache_dir) != 0) {
+      return -1;
+    }
   }
 
   char mise_version_dir[64];
