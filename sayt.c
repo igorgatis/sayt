@@ -320,6 +320,7 @@ int init_context(const char* in_argv0, Context* ctx) {
   join_path(ctx->nu_toml, "/", sayt_dir, "nu.toml");
 
   debugf("context:\n");
+  debugf("  in_argv0=%s\n", in_argv0);
   debugf("  cache_dir=%s\n", ctx->cache_dir);
   debugf("  mise_dir=%s\n", ctx->mise_dir);
   debugf("  mise_url=%s\n", ctx->mise_url);
