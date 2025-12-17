@@ -187,7 +187,9 @@ int init_context(char* in_argv0, Context* ctx) {
   } else {
     join_path(ctx->mise_bin, "/", ctx->mise_dir, "mise");
     char bin_name[256];
-    snprintf(bin_name, sizeof(bin_name), "mise-%s-%s-%s", MISE_VERSION, detect_os(), detect_arch());
+    const char* musl_suffix = IsLinux() ? "-musl" : "";
+    snprintf(bin_name, sizeof(bin_name), "mise-%s-%s-%s%s",
+             MISE_VERSION, detect_os(), detect_arch(), musl_suffix);
     join_path(ctx->mise_url, "/", MISE_RELEASES_URL, MISE_VERSION, bin_name);
   }
 
