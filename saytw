@@ -1,0 +1,61 @@
+#!/bin/sh
+set -e
+
+SAYT_BINARY="sayt.com"
+SAYT_URL="https://github.com/igorgatis/sayt/releases/latest/download/$SAYT_BINARY"
+
+get_cache_dir() {
+  if [ "$(uname)" = "Darwin" ]; then
+    echo "${HOME}/Library/Caches/sayt"
+  elif [ -n "$XDG_CACHE_HOME" ]; then
+    echo "$XDG_CACHE_HOME/sayt"
+  elif [ -n "$HOME" ]; then
+    echo "$HOME/.cache/sayt"
+  else
+    echo "/tmp/sayt"
+  fi
+}
+
+CACHE_DIR=$(get_cache_dir)
+
+find_sayt() {
+  if [ -f "./$SAYT_BINARY" ]; then
+    echo "./$SAYT_BINARY"
+    return 0
+  fi
+
+  if [ -f "$CACHE_DIR/$SAYT_BINARY" ]; then
+    echo "$CACHE_DIR/$SAYT_BINARY"
+    return 0
+  fi
+
+  if command -v "$SAYT_BINARY" >/dev/null 2>&1; then
+    command -v "$SAYT_BINARY"
+    return 0
+  fi
+
+  return 1
+}
+
+download_sayt() {
+  mkdir -p "$CACHE_DIR"
+  dest="$CACHE_DIR/$SAYT_BINARY"
+
+  echo "Downloading $SAYT_BINARY from $SAYT_URL..." >&2
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "$dest" "$SAYT_URL"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O "$dest" "$SAYT_URL"
+  else
+    echo "Error: Neither curl nor wget found. Please install one of them." >&2
+    exit 1
+  fi
+
+  chmod +x "$dest"
+  echo "$dest"
+}
+
+sayt_path=$(find_sayt) || sayt_path=$(download_sayt)
+
+exec "$sayt_path" "$@"
