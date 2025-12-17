@@ -10,7 +10,6 @@
 #include <sys/wait.h>
 #include <sys/utsname.h>
 #include <libgen.h>
-#include <libc/cosmo.h>
 #include <libc/dce.h>
 #include <libc/calls/calls.h>
 #include <libc/str/str.h>
@@ -111,13 +110,13 @@ const char* detect_arch() {
 }
 
 char* sayt_bin_name() {
-  // if (IsLinux()) {
-  //   const char* arch = detect_arch();
-  //   if (strcmp(arch, "x64") == 0) {
-  //     return "sayt-amd64.elf";
-  //   }
-  //   return  "sayt-arm64.elf";
-  // }
+  if (IsLinux()) {
+    const char* arch = detect_arch();
+    if (strcmp(arch, "x64") == 0) {
+      return "sayt-amd64.elf";
+    }
+    return  "sayt-arm64.elf";
+  }
   return "sayt.com";
 }
 
@@ -448,12 +447,9 @@ int main(int argc, char* argv[]) {
   }
   append_argv(&new_argc, new_argv, &argv[1]);
 
-  // debugf("execve");
-  debugf("systemvpe");
   debug_args(new_argv);
   extern char** environ;
-  // execve(new_argv[0], new_argv, environ);
-  systemvpe(new_argv[0], new_argv, environ);
+  execve(new_argv[0], new_argv, environ);
   perror("execve failed");
   return 1;
 }
