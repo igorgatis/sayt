@@ -58,5 +58,7 @@ jobs:
           files: |
             sayt-${{ inputs.version }}.zip
             pkg/bin/sayt.com
+            saytw
+            saytw.ps1
           generate_release_notes: true
           make_latest: ${{ steps.version.outputs.is_latest }}

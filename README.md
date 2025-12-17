@@ -8,42 +8,29 @@ There are multiple ways to install SAYT:
 
 ### Option A: Direct download (APE binary)
 
-Download `sayt.com` directly and place it in your repository root or `~/.local/bin`:
-
-```sh
-curl -fsSL -o sayt.com https://github.com/igorgatis/sayt/releases/latest/download/sayt.com
-chmod +x sayt.com
-```
-
-This is an [Actually Portable Executable (APE)](https://justine.lol/ape.html)
-binary which works on Windows, Linux, and macOS without modification.
+[sayt.com](https://github.com/igorgatis/sayt/releases/latest/download/sayt.com)
+is an [Actually Portable Executable (APE)](https://justine.lol/ape.html) binary.
+Download it and place it in the root of your repository. It works on Windows,
+Linux, and macOS without modification.
 
 ### Option B: Wrapper scripts
 
-Download the wrapper scripts to your repository. These scripts automatically
-download `sayt.com` to a cache directory on first run.
+If you'd rather not have a `sayt.com` binary checked in, use wrapper scripts:
 
-**For Linux/macOS (shell script):**
+- [saytw](https://github.com/igorgatis/sayt/releases/latest/download/saytw) for Linux/macOS
+- [saytw.ps1](https://github.com/igorgatis/sayt/releases/latest/download/saytw.ps1) for Windows
+
+**Linux/macOS:**
 
 ```sh
-curl -fsSL -o saytw https://github.com/igorgatis/sayt/releases/latest/download/saytw
-chmod +x saytw
 ./saytw [args...]
 ```
 
-**For Windows (PowerShell):**
+**Windows:**
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/igorgatis/sayt/releases/latest/download/saytw.ps1 -OutFile saytw.ps1
 .\saytw.ps1 [args...]
 ```
-
-The wrapper scripts:
-1. Check for `sayt.com` in the current directory
-2. Check for `sayt.com` in the cache directory
-3. Check if `sayt.com` is available in PATH
-4. If not found, download `sayt.com` to the cache directory
-5. Execute `sayt.com` with the provided arguments
 
 ### Option C: Install via mise
 
