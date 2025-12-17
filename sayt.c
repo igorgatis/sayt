@@ -399,8 +399,13 @@ int main(int argc, char* argv[]) {
     append_argv(cmd, &new_argc, new_argv);
   } else {
     debugf("Bootstrapping %s\n", ctx.sayt_at_version);
-    char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sayt.com", NULL};
-    append_argv(cmd, &new_argc, new_argv);
+    if (IsWindows()) {
+      char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sayt.com", NULL};
+      append_argv(cmd, &new_argc, new_argv);
+    } else {
+      char* cmd[] = {ctx.mise_bin, "exec", ctx.sayt_at_version, "--", "sh", "sayt.com", NULL};
+      append_argv(cmd, &new_argc, new_argv);
+    }
   }
   append_argv(&argv[1], &new_argc, new_argv);
 
