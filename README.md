@@ -6,14 +6,27 @@ TODO: Explain what SAYT is.
 
 There are multiple ways to install SAYT:
 
-### Option A: Direct download (APE binary)
+### APE binary
 
 [sayt.com](https://github.com/igorgatis/sayt/releases/latest/download/sayt.com)
 is an [Actually Portable Executable (APE)](https://justine.lol/ape.html) binary.
 Download it and place it in the root of your repository. It works on Windows,
 Linux, and macOS without modification.
 
-### Option B: Wrapper scripts
+**Linux/macOS:**
+
+```sh
+curl -LO https://github.com/igorgatis/sayt/releases/latest/download/sayt.com
+chmod +x sayt.com
+```
+
+**Windows (PowerShell):**
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/igorgatis/sayt/releases/latest/download/sayt.com -OutFile sayt.com
+```
+
+### Wrapper scripts
 
 If you'd rather not have a `sayt.com` binary checked in, use wrapper scripts:
 
@@ -32,15 +45,7 @@ If you'd rather not have a `sayt.com` binary checked in, use wrapper scripts:
 .\saytw.ps1 [args...]
 ```
 
-### Option C: Install via mise
-
-If you use [mise](https://mise.jdx.dev/), you can install SAYT as a tool:
-
-```sh
-mise use github:igorgatis/sayt
-```
-
-### Option D: Docker
+### Docker
 
 Copy the binary from the container image in your Dockerfile:
 
