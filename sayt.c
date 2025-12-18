@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sys/utsname.h>
 #include <libgen.h>
+#include <libc/cosmo.h>
 #include <libc/dce.h>
 #include <libc/calls/calls.h>
 #include <libc/str/str.h>
@@ -80,7 +81,6 @@ typedef struct {
   char unzip_bin[PATH_MAX];
 
   bool sayt_installed;
-  char sayt_version[PATH_MAX];
   char sayt_nu[PATH_MAX];
   char nu_toml[PATH_MAX];
 
@@ -255,25 +255,7 @@ void resolve_cache_dir(char* out_cache_dir) {
   }
 }
 
-int resolve_sayt_dir(const char* in_argv0, char* out_dir) {
-  char resolved[PATH_MAX];
-  if (realpath(in_argv0, resolved) == NULL) {
-    strncpy(resolved, in_argv0, sizeof(resolved) - 1);
-  }
-  char* dir = dirname(resolved);
-  char parent[PATH_MAX];
-  join_path(parent, "/", dir, "..");
-  char* resolved_parent = realpath(parent, NULL);
-  if (resolved_parent) {
-    strncpy(out_dir, resolved_parent, PATH_MAX - 1);
-    free(resolved_parent);
-    return 0;
-  }
-  fprintf(stderr, "Error: Could not resolve sayt directory\n");
-  return -1;
-}
-
-int init_context(const char* in_argv0, Context* ctx) {
+int init_context(Context* ctx) {
   memset(ctx, 0, sizeof(Context));
 
   resolve_cache_dir(ctx->cache_dir);
@@ -306,31 +288,31 @@ int init_context(const char* in_argv0, Context* ctx) {
     join_path(ctx->mise_url, "/", MISE_RELEASES_URL, MISE_VERSION, bin_name);
   }
 
+  // If this executable is running inside a sayt install, it is under bin folder.
+  // We check whether bin/../.version file exists.
+  char* runner_dir = dirname(GetProgramExecutableName());
+  char version_file[PATH_MAX];
+  join_path(version_file, "/", dirname(runner_dir), ".version");
+  ctx->sayt_installed = file_exists(version_file);
+  if (ctx->sayt_installed) {
+    join_path(ctx->sayt_nu, "/", runner_dir, "sayt.nu");
+    join_path(ctx->nu_toml, "/", runner_dir, "nu.toml");
+  }
+
   char* version = getenv(SAYT_VERSION_ENV);
   if (!version) version = "latest";
   snprintf(ctx->sayt_at_version, PATH_MAX, "%s@%s", SAYT_MISE_LOCATION, version);
 
-  char sayt_dir[PATH_MAX];
-  if (resolve_sayt_dir(in_argv0, sayt_dir) != 0) {
-    return -1;
-  }
-  join_path(ctx->sayt_version, "/", sayt_dir, ".version");
-  ctx->sayt_installed = file_exists(ctx->sayt_version);
-  join_path(ctx->sayt_nu, "/", sayt_dir, "sayt.nu");
-  join_path(ctx->nu_toml, "/", sayt_dir, "nu.toml");
-
   debugf("context:\n");
-  debugf("  in_argv0=%s\n", in_argv0);
   debugf("  cache_dir=%s\n", ctx->cache_dir);
   debugf("  mise_dir=%s\n", ctx->mise_dir);
   debugf("  mise_url=%s\n", ctx->mise_url);
   debugf("  mise_bin=%s\n", ctx->mise_bin);
-  debugf("  sayt_at_version=%s\n", ctx->sayt_at_version);
-  debugf("  sayt_dir=%s\n", sayt_dir);
-  debugf("  sayt_version=%s\n", ctx->sayt_version);
+  debugf("  runner_dir=%s\n", runner_dir);
   debugf("  sayt_installed=%s\n", ctx->sayt_installed ? "YES" : "NO");
   debugf("  sayt_nu=%s\n", ctx->sayt_nu);
   debugf("  nu_toml=%s\n", ctx->nu_toml);
+  debugf("  sayt_at_version=%s\n", ctx->sayt_at_version);
   return 0;
 }
 
@@ -433,7 +415,7 @@ void append_argv(int* out_argc, char* out_argv[], char *const in_args[]) {
 
 int main(int argc, char* argv[]) {
   Context ctx;
-  if (init_context(argv[0], &ctx) != 0) {
+  if (init_context(&ctx) != 0) {
     return 1;
   }
   if (IsLinux()) {
