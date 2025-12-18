@@ -15,6 +15,7 @@
 #include <libc/calls/calls.h>
 #include <libc/str/str.h>
 #include <libc/stdio/append.h>
+#include <libc/runtime/zipos.internal.h>
 #include <net/https/fetch.h>
 
 #define SAYT_VERSION_ENV "SAYT_VERSION"
@@ -188,12 +189,18 @@ int write_file(const char* data, const char* dst_path) {
   return 0;
 }
 
-int setup_linux_ssl_certs(const char* cache_dir) {
+int setup_ssl_certs(const char* cache_dir) {
+  struct Zipos *zipos = __zipos_get();
+  debugf("__zipos_get() = %p\n", (void*)zipos);
+  if (zipos) {
+    debugf("  zipos->map = %p\n", (void*)zipos->map);
+    debugf("  zipos->cdir = %p\n", (void*)zipos->cdir);
+    debugf("  zipos->records = %zu\n", zipos->records);
+  }
+
 #ifdef EMBEDDED_CA_CERTS_DATA
-  // When EMBEDDED_CA_CERTS_DATA is defined, it means this is a regular
-  // binary (not an APE binary) and thus EMBEDDED_CA_CERTS_FILE is missing.
   if (!file_exists(EMBEDDED_CA_CERTS_FILE)) {
-    debugf("Writing SSL embeded certs to %s\n", EMBEDDED_CA_CERTS_FILE);
+    debugf("Writing SSL embedded certs to %s\n", EMBEDDED_CA_CERTS_FILE);
     if (makedirs(EMBEDDED_CA_CERTS_DIR, 0755) != 0 && errno != EEXIST) {
       fprintf(stderr, "Error: Failed to create %s\n", EMBEDDED_CA_CERTS_DIR);
       return -1;
@@ -308,6 +315,7 @@ int init_context(Context* ctx) {
   debugf("  mise_dir=%s\n", ctx->mise_dir);
   debugf("  mise_url=%s\n", ctx->mise_url);
   debugf("  mise_bin=%s\n", ctx->mise_bin);
+  debugf("  GetProgramExecutableName=%s\n", GetProgramExecutableName());
   debugf("  runner_dir=%s\n", runner_dir);
   debugf("  sayt_installed=%s\n", ctx->sayt_installed ? "YES" : "NO");
   debugf("  sayt_nu=%s\n", ctx->sayt_nu);
@@ -418,10 +426,8 @@ int main(int argc, char* argv[]) {
   if (init_context(&ctx) != 0) {
     return 1;
   }
-  if (IsLinux()) {
-    if (setup_linux_ssl_certs(ctx.cache_dir) != 0) {
-      return -1;
-    }
+  if (setup_ssl_certs(ctx.cache_dir) != 0) {
+    return -1;
   }
   if (fetch_mise(&ctx) != 0) {
     return 1;

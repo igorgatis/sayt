@@ -60,11 +60,11 @@ $(CERTS_H): $(CACERT)
 
 $(SAYT_OBJ_APE): sayt.c
 	@$(MKDIR) -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@ -v
 
 $(BUILD_APE): $(SAYT_OBJ_APE) $(LIB_OBJS) $(CACERT)
 	@$(MKDIR) -p $(dir $@)
-	$(CC) $(CFLAGS) -o $@ $(SAYT_OBJ_APE) $(LIB_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(SAYT_OBJ_APE) $(LIB_OBJS) -v
 	$(ZIP) -r $@ usr
 
 $(SAYT_OBJ_ELF): sayt.c $(CERTS_H)
