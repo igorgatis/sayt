@@ -256,27 +256,35 @@ void resolve_cache_dir(char* out_cache_dir) {
 
 int safe_realpath(char* path) {
   char copy[PATH_MAX+1];
-  if (realpath(path, copy) != NULL) {
-    if (strlcpy(path, copy, PATH_MAX) < PATH_MAX) {
-      return 0;
-    }
+  if (realpath(path, copy) == NULL) {
+    fprintf(stderr, "Error: failed to resolve absolute path %s\n", path);
+    return -1;
   }
-  return -1;
+  if (strlcpy(path, copy, PATH_MAX) >= PATH_MAX) {
+    fprintf(stderr, "Error: failed to resolve absolute path %s\n", path);
+    return -1;
+  }
+  return 0;
 }
 
 int resolve_install_dir(char* install_dir) {
-  // dirname() modifies its input. Therefore, we copy runner path to runner_dir.
-  char runner_dir[PATH_MAX];
-  if (strlcpy(runner_dir, GetProgramExecutableName(), PATH_MAX) >= PATH_MAX) {
+  char path[PATH_MAX+1];
+  if (strlcpy(path, GetProgramExecutableName(), PATH_MAX) >= PATH_MAX) {
     fprintf(stderr, "Error: could not resolve executable path\n");
     return -1;
   }
-  dirname(runner_dir);
+  // Current dirname() implementation may or may NOT update its input.
+  // Therefore, must use its returned value. 
+  strlcpy(path, dirname(path), PATH_MAX);
 
   // When running from a installed SAYT, the runner is inside 'bin' folder and
   // other files, such as '.version' is one level below.
-  join_path(install_dir, "/", runner_dir, "..");
-  return safe_realpath(install_dir);
+  join_path(install_dir, "/", path, "..");
+  if (safe_realpath(install_dir) != 0) {
+    fprintf(stderr, "Error: failed to resolve absolute path %s\n", install_dir);
+    return -1;
+  }
+  return 0;
 }
 
 int init_context(Context* ctx) {
@@ -314,6 +322,7 @@ int init_context(Context* ctx) {
 
   char sayt_install_dir[PATH_MAX];
   if (resolve_install_dir(sayt_install_dir) != 0) {
+    fprintf(stderr, "Error: Failed to resolve SAYT install dir\n");
     return -1;
   }
 
@@ -440,6 +449,8 @@ void append_argv(int* out_argc, char* out_argv[], char *const in_args[]) {
 }
 
 int main(int argc, char* argv[]) {
+  debugf("executable: %s\n", GetProgramExecutableName());
+
   Context ctx;
   if (init_context(&ctx) != 0) {
     return 1;
