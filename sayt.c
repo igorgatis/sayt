@@ -190,14 +190,6 @@ int write_file(const char* data, const char* dst_path) {
 }
 
 int setup_ssl_certs(const char* cache_dir) {
-  struct Zipos *zipos = __zipos_get();
-  debugf("__zipos_get() = %p\n", (void*)zipos);
-  if (zipos) {
-    debugf("  zipos->map = %p\n", (void*)zipos->map);
-    debugf("  zipos->cdir = %p\n", (void*)zipos->cdir);
-    debugf("  zipos->records = %zu\n", zipos->records);
-  }
-
 #ifdef EMBEDDED_CA_CERTS_DATA
   if (!file_exists(EMBEDDED_CA_CERTS_FILE)) {
     debugf("Writing SSL embedded certs to %s\n", EMBEDDED_CA_CERTS_FILE);
@@ -262,6 +254,31 @@ void resolve_cache_dir(char* out_cache_dir) {
   }
 }
 
+int safe_realpath(char* path) {
+  char copy[PATH_MAX+1];
+  if (realpath(path, copy) != NULL) {
+    if (strlcpy(path, copy, PATH_MAX) < PATH_MAX) {
+      return 0;
+    }
+  }
+  return -1;
+}
+
+int resolve_install_dir(char* install_dir) {
+  // dirname() modifies its input. Therefore, we copy runner path to runner_dir.
+  char runner_dir[PATH_MAX];
+  if (strlcpy(runner_dir, GetProgramExecutableName(), PATH_MAX) >= PATH_MAX) {
+    fprintf(stderr, "Error: could not resolve executable path\n");
+    return -1;
+  }
+  dirname(runner_dir);
+
+  // When running from a installed SAYT, the runner is inside 'bin' folder and
+  // other files, such as '.version' is one level below.
+  join_path(install_dir, "/", runner_dir, "..");
+  return safe_realpath(install_dir);
+}
+
 int init_context(Context* ctx) {
   memset(ctx, 0, sizeof(Context));
 
@@ -295,15 +312,17 @@ int init_context(Context* ctx) {
     join_path(ctx->mise_url, "/", MISE_RELEASES_URL, MISE_VERSION, bin_name);
   }
 
-  // If this executable is running inside a sayt install, it is under bin folder.
-  // We check whether bin/../.version file exists.
-  char* runner_dir = dirname(GetProgramExecutableName());
-  char version_file[PATH_MAX];
-  join_path(version_file, "/", dirname(runner_dir), ".version");
-  ctx->sayt_installed = file_exists(version_file);
+  char sayt_install_dir[PATH_MAX];
+  if (resolve_install_dir(sayt_install_dir) != 0) {
+    return -1;
+  }
+
+  char dot_version_file[PATH_MAX];
+  join_path(dot_version_file, "/", sayt_install_dir, ".version");
+  ctx->sayt_installed = file_exists(dot_version_file);
   if (ctx->sayt_installed) {
-    join_path(ctx->sayt_nu, "/", runner_dir, "sayt.nu");
-    join_path(ctx->nu_toml, "/", runner_dir, "nu.toml");
+    join_path(ctx->sayt_nu, "/", sayt_install_dir, "sayt.nu");
+    join_path(ctx->nu_toml, "/", sayt_install_dir, "nu.toml");
   }
 
   char* version = getenv(SAYT_VERSION_ENV);
@@ -316,7 +335,6 @@ int init_context(Context* ctx) {
   debugf("  mise_url=%s\n", ctx->mise_url);
   debugf("  mise_bin=%s\n", ctx->mise_bin);
   debugf("  GetProgramExecutableName=%s\n", GetProgramExecutableName());
-  debugf("  runner_dir=%s\n", runner_dir);
   debugf("  sayt_installed=%s\n", ctx->sayt_installed ? "YES" : "NO");
   debugf("  sayt_nu=%s\n", ctx->sayt_nu);
   debugf("  nu_toml=%s\n", ctx->nu_toml);
